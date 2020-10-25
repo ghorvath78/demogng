@@ -56,6 +56,15 @@ VBNN.compatible = function (a, b) {
     return ret;
 };
 VBNN.models = {
+    "TNG": {
+        name: "Tiling Neural Gas",
+        author: "BME Team, 2020",
+        staysAdaptive: true,
+        detlink: "alma",
+        implemented: true,
+        hasEdges: true,
+        batch: false
+    },
     "GNG": {
         name: "Growing Neural Gas",
         author: "Fritzke, 1995",
@@ -1807,6 +1816,147 @@ function logArrayElements(element, index, array) {
     cl('a[' + index + '] = ' + element.dist);
 }
 
+VBNN.prototype.removeTNGNeighbor = function (node, toRemove) {
+
+    var i;
+    for (i = 0; i < node.r2Neighbors.length; i++)
+        if (node.r2Neighbors[i].node == toRemove) {
+            node.r2Neighbors.splice(i, 1);
+            break;
+        }
+}
+
+VBNN.prototype.setTNGNeighbors = function (node) {
+
+    node.r2Neighbors = [];
+    var i;
+    for (i in this.nodes) {
+        if (i == node.id)
+            continue;
+        var dis = this.nodes[i].position.sqdist(node.position);
+        if (dis < 4*glob.tng_r*glob.tng_r)
+            node.r2Neighbors.push({node: this.nodes[i], dist: Math.sqrt(dis)});
+    }
+}
+
+VBNN.prototype.updateTNGNeighbors = function (node) {
+
+    var i;
+	for (i = 0; i < node.r2Neighbors.length; i++)
+        this.removeTNGNeighbor(node.r2Neighbors[i].node, node);
+    this.setTNGNeighbors(node);
+}
+
+VBNN.prototype.createTNGNode = function (signal) {
+
+    var n = new Node();
+    this.nodes[n.id] = n;
+    this.noOfNodes++;
+    n.position.copyFrom(signal);
+    n.uBound = new Vector();
+    n.lBound = new Vector();
+    n.uBound.copyFrom(signal);
+    n.lBound.copyFrom(signal);
+    n.r2Neighbors = [];
+
+    return n;
+}
+
+VBNN.prototype.adaptTNGNodePositions = function (node) {
+
+    var neigh = node.r2Neighbors;
+	if (neigh.length < 3)
+		return;
+
+	var md = 0, k;
+	for (k = 0; k < neigh.length; k++)
+		md += neigh[k].dist;
+    md /= neigh.length;
+    
+    
+    var npnt = new Vector();
+    for (k = 0; k < neigh.length; k++)
+        npnt.add(neigh[k].node.position);
+    npnt.multiplyBy(1.0 / neigh.length);
+
+    var tmp = new Vector();
+    var mean2 = new Vector();
+    for (k = 0; k < neigh.length; k++) {
+        tmp.copyFrom(neigh[k].node.position);
+        tmp.subtract(node.position);
+        tmp.multiplyBy(md / neigh[k].dist);
+        mean2.add(tmp);
+    }
+    mean2.multiplyBy(1.0 / neigh.length);
+    npnt.subtract(mean2);
+
+    npnt.min(node.uBound);
+    npnt.max(node.lBound);
+
+    node.position.copyFrom(npnt);
+	this.updateTNGNeighbors(node);
+}
+
+VBNN.prototype.toRemoveTNGNode = function (candidates) {
+
+    var DIM = 3;
+    var toDel = null;
+    var mostOvrlp = 0;
+    var i, j;
+	for (i = 0; i < candidates.length; i++) {
+        var denseArea = false;
+        for (j = 0; j < candidates[i].node.r2Neighbors.length; j++)
+		    if (candidates[i].node.r2Neighbors[j].dist < glob.tng_r) {
+                denseArea = true;
+                break;
+            }            
+		if (denseArea) {
+            var ovrlp = 0;
+            for (j = 0; j < candidates[i].node.r2Neighbors.length; j++)
+                ovrlp += incBeta(1 - ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r) * ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r), (DIM + 1) / 2.0, 1 / 2.0);
+			if (ovrlp > mostOvrlp) {
+				mostOvrlp = ovrlp;
+				toDel = candidates[i].node;
+			}
+		}
+	}
+	return toDel;
+}
+
+VBNN.prototype.adaptTNG = function (signal) {
+
+    if (Object.keys(this.nodes).length == 0) {
+        this.createTNGNode(signal);
+        return;
+    }
+
+    var closest = this.findBMU(signal);
+	var closestDist = closest.position.dist(signal);
+
+	if (closestDist > glob.tng_r)
+        this.updateTNGNeighbors(this.createTNGNode(signal));
+	else {
+        closest.uBound.max(signal);
+        closest.lBound.min(signal);
+    
+		this.adaptTNGNodePositions(closest);
+
+        var r2Neighbors = Array.from(closest.r2Neighbors), i;
+        var toDel = this.toRemoveTNGNode(r2Neighbors);
+        while (toDel) {
+            for (i = 0; i < toDel.r2Neighbors.length; i++)
+                this.removeTNGNeighbor(toDel.r2Neighbors[i].node, toDel);
+            for (i = 0; i < r2Neighbors.length; i++)
+                if (r2Neighbors[i].node == toDel) {
+                    r2Neighbors.splice(i, 1);
+                    break;
+                }
+            delete this.nodes[toDel.id];
+            toDel = this.toRemoveTNGNode(r2Neighbors);
+        }
+	}
+}
+
 VBNN.prototype.adaptNG = function (signal) {
     var bmu = this.findBMU(signal);
     glob.mostRecentBMU = bmu;
@@ -2039,6 +2189,7 @@ VBNN.prototype.adaptHCL = function (signal) {
     this.delta.multiplyBy(glob.hcl_eps_i); // delta *= eps_b
     bmu.position.add(this.delta); //adapt bmu
 }
+
 
 VBNN.prototype.adaptGNG = function (signal, checkUtil) {
     // find bmu
@@ -2580,6 +2731,12 @@ Node.prototype.drawfull = function () {
     ctx.arc(this.position.x * can2D.width, this.position.y * can2D.height, glob.nodeDiameter * fac, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
+
+    if (nn.model == "TNG") {
+        ctx.beginPath();
+        ctx.arc(this.position.x * can2D.width, this.position.y * can2D.height, xscale(glob.tng_r), 0, 2 * Math.PI);
+        ctx.stroke();    
+    }
 }
 Node.prototype.draw = Node.prototype.drawfull;
 //
@@ -2682,6 +2839,18 @@ Vector.prototype.rotate = function (angle) {
 }
 Vector.prototype.product = function (vector) {
     return this.x*vector.x + this.y*vector.y + this.z*vector.z;
+}
+
+Vector.prototype.max = function (vector) {
+    this.x = Math.max(this.x, vector.x);
+    this.y = Math.max(this.y, vector.y);
+    this.z = Math.max(this.z, vector.z);
+}
+
+Vector.prototype.min = function (vector) {
+    this.x = Math.min(this.x, vector.x);
+    this.y = Math.min(this.y, vector.y);
+    this.z = Math.min(this.z, vector.z);
 }
 
 var lastSignal = new Vector

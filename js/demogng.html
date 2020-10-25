@@ -218,6 +218,7 @@ void main() {
 <div  class="buttondiv seldiff">
 <button title="prev. Model" class="pmodel symbutton">&lt;M</button>  
 <select name="model" id="model">
+  <option value="TNG">Tiling Neural Gas</option>
   <option value="GNG">Growing Neural Gas (Fritzke)</option>
   <option value="GNG-U">Growing Neural Gas w. Utility (Fritzke)</option>
   <option value="ITM">Instantaneous Topological Map (Ritter)</option>
@@ -284,6 +285,17 @@ void main() {
 
 <div id="reference">
 </div>
+
+<!--
+//
+// TNG
+//
+-->
+<div id="TNG" class="modelparams">
+	<table id="TNGtable">
+	</table>
+	</div> <!-- GNG -->
+
 <!--
 //
 // GNG
@@ -547,6 +559,7 @@ hidden parameters and settings
 -->
 <script> //cl("loading jquery.ui.touch-punch.min.js"); </script>
 <script src="jquery.ui.touch-punch.min.js"></script>
+<script src="specmath.js"></script>
 <script> //cl("loading globvars.js"); </script>
 <script src="globvars.js"></script>
 <script> //cl("loading numPar.js"); </script>

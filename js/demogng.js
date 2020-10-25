@@ -592,6 +592,10 @@ function resetFun(from) {
         $("#showAutoRestart").button("enable");
     }
     switch (curmodel) {
+        case "TNG":
+            loop = loopTNG;
+            VBNN.prototype.adapt = VBNN.prototype.adaptTNG;
+            break;
         case "GNG":
         case "GNG-U":
             $("#showEdges").show();

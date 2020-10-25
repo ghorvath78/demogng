@@ -456,6 +456,16 @@ xx = new NumPar({
     value: 300,
     rem: "miliseconds between signals"
 });
+// TiliNG
+xx = new NumPar({
+    model: "TNG",
+    name: "tng_r",
+    min: 0.01,
+    max: 1,
+    step: 0.01,
+    value: 0.05,
+    rem: "Radius of the n-balls"
+});
 
 // GNG
 xx = new LogPar({
