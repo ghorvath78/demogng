@@ -1858,6 +1858,8 @@ VBNN.prototype.createTNGNode = function (signal) {
     n.uBound.copyFrom(signal);
     n.lBound.copyFrom(signal);
     n.r2Neighbors = [];
+    n.createdAt = new Vector();
+    n.createdAt.copyFrom(signal);
 
     return n;
 }
@@ -1893,13 +1895,23 @@ VBNN.prototype.adaptTNGNodePositions = function (node) {
     npnt.min(node.uBound);
     npnt.max(node.lBound);
 
+    if (glob.limit_movement) {
+        var D = npnt.dist(node.createdAt);
+        if (D > glob.tng_r) {
+            npnt.subtract(node.createdAt);
+            npnt.multiplyBy(glob.tng_r / D);
+            npnt.add(node.createdAt);
+            console.log(D, npnt.dist(node.createdAt));
+        }
+    }
+
     node.position.copyFrom(npnt);
 	this.updateTNGNeighbors(node);
 }
 
 VBNN.prototype.toRemoveTNGNode = function (candidates) {
 
-    var DIM = 3;
+    var DIM = glob._3DPD ? 3 : 2;
     var toDel = null;
     var mostOvrlp = 0;
     var i, j;
@@ -1939,20 +1951,23 @@ VBNN.prototype.adaptTNG = function (signal) {
         closest.uBound.max(signal);
         closest.lBound.min(signal);
     
-		this.adaptTNGNodePositions(closest);
+        if (!glob.no_adapt)
+		    this.adaptTNGNodePositions(closest);
 
-        var r2Neighbors = Array.from(closest.r2Neighbors), i;
-        var toDel = this.toRemoveTNGNode(r2Neighbors);
-        while (toDel) {
-            for (i = 0; i < toDel.r2Neighbors.length; i++)
-                this.removeTNGNeighbor(toDel.r2Neighbors[i].node, toDel);
-            for (i = 0; i < r2Neighbors.length; i++)
-                if (r2Neighbors[i].node == toDel) {
-                    r2Neighbors.splice(i, 1);
-                    break;
-                }
-            delete this.nodes[toDel.id];
-            toDel = this.toRemoveTNGNode(r2Neighbors);
+        if (!glob.no_delete) {
+            var r2Neighbors = Array.from(closest.r2Neighbors), i;
+            var toDel = this.toRemoveTNGNode(r2Neighbors);
+            while (toDel) {
+                for (i = 0; i < toDel.r2Neighbors.length; i++)
+                    this.removeTNGNeighbor(toDel.r2Neighbors[i].node, toDel);
+                for (i = 0; i < r2Neighbors.length; i++)
+                    if (r2Neighbors[i].node == toDel) {
+                        r2Neighbors.splice(i, 1);
+                        break;
+                    }
+                delete this.nodes[toDel.id];
+                toDel = this.toRemoveTNGNode(r2Neighbors);
+            }
         }
 	}
 }
@@ -2732,7 +2747,7 @@ Node.prototype.drawfull = function () {
     ctx.fill();
     ctx.stroke();
 
-    if (nn.model == "TNG") {
+    if (nn.model == "TNG" && glob.draw_bounds) {
         ctx.beginPath();
         ctx.arc(this.position.x * can2D.width, this.position.y * can2D.height, xscale(glob.tng_r), 0, 2 * Math.PI);
         ctx.stroke();    

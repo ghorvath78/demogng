@@ -593,6 +593,7 @@ function resetFun(from) {
     }
     switch (curmodel) {
         case "TNG":
+            $("#showEdges").show();
             loop = loopTNG;
             VBNN.prototype.adapt = VBNN.prototype.adaptTNG;
             break;

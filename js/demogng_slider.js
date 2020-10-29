@@ -461,10 +461,34 @@ xx = new NumPar({
     model: "TNG",
     name: "tng_r",
     min: 0.01,
-    max: 1,
+    max: 0.2,
     step: 0.01,
     value: 0.05,
     rem: "Radius of the n-balls"
+});
+xx = new LogPar({
+    model: "TNG",
+    name: "no_delete",
+    value: false,
+    rem: "Disable node deletion"
+});
+xx = new LogPar({
+    model: "TNG",
+    name: "no_adapt",
+    value: false,
+    rem: "Disable node position adjustment"
+});
+xx = new LogPar({
+    model: "TNG",
+    name: "limit_movement",
+    value: false,
+    rem: "Dont let nodes move more than R from the position they were created"
+});
+xx = new LogPar({
+    model: "TNG",
+    name: "draw_bounds",
+    value: true,
+    rem: "Draw circe around nodes according to the radius parameter"
 });
 
 // GNG

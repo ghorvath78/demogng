@@ -323,18 +323,6 @@ function loopTNG() {
             sigStore[i].copyFrom(signal);
         }
     }
-    if (glob.showStats) {
-        if (signalsPresented >= glob.ng_t_max) {
-            flashN(0, (signalsPresented / glob.ng_t_max * 100).toFixed(0) + "% (t_max reached)", 3000, 0, 0.07);
-        } else {
-            flashN(0, (signalsPresented / glob.ng_t_max * 100).toFixed(0) + "%", 1000, 0, 0.07);
-        }
-    }
-    if (signalsPresented >= glob.ng_t_max) {
-        //nn.converged=true;
-        convergence("");
-        stopAndMaybeRestart();
-    }
     noOfRecentSignals = Math.min(maxSignalsDrawn, i);
 }
 
