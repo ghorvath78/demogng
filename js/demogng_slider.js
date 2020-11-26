@@ -466,6 +466,15 @@ xx = new NumPar({
     value: 0.05,
     rem: "Radius of the n-balls"
 });
+xx = new NumPar({
+    model: "TNG",
+    name: "approx_steps",
+    min: 1,
+    max: 20,
+    step: 1,
+    value: 1,
+    rem: "Number of iterations to find optimal node position"
+});
 xx = new LogPar({
     model: "TNG",
     name: "no_delete",

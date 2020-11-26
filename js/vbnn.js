@@ -1870,18 +1870,29 @@ VBNN.prototype.adaptTNGNodePositions = function (node) {
 	if (neigh.length < 3)
 		return;
 
-	var md = 0, k;
+    var k;
+    var tmp = new Vector();
+    tmp.copyFrom(neigh[0].node.position);
+	for (k = 1; k < neigh.length; k++)
+		tmp.min(neigh[k].node.position);
+    if (node.position.x < tmp.x || node.position.y < tmp.y || node.position.z < tmp.z)
+        return;
+    tmp.copyFrom(neigh[0].node.position);
+    for (k = 1; k < neigh.length; k++)
+        tmp.max(neigh[k].node.position);
+    if (node.position.x > tmp.x || node.position.y > tmp.y || node.position.z > tmp.z)
+        return;    
+
+	var md = 0;
 	for (k = 0; k < neigh.length; k++)
 		md += neigh[k].dist;
     md /= neigh.length;
-    
-    
+        
     var npnt = new Vector();
     for (k = 0; k < neigh.length; k++)
         npnt.add(neigh[k].node.position);
     npnt.multiplyBy(1.0 / neigh.length);
 
-    var tmp = new Vector();
     var mean2 = new Vector();
     for (k = 0; k < neigh.length; k++) {
         tmp.copyFrom(neigh[k].node.position);
@@ -1901,7 +1912,6 @@ VBNN.prototype.adaptTNGNodePositions = function (node) {
             npnt.subtract(node.createdAt);
             npnt.multiplyBy(glob.tng_r / D);
             npnt.add(node.createdAt);
-            console.log(D, npnt.dist(node.createdAt));
         }
     }
 
@@ -1925,7 +1935,7 @@ VBNN.prototype.toRemoveTNGNode = function (candidates) {
 		if (denseArea) {
             var ovrlp = 0;
             for (j = 0; j < candidates[i].node.r2Neighbors.length; j++)
-                ovrlp += incBeta(1 - ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r) * ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r), (DIM + 1) / 2.0, 1 / 2.0);
+                ovrlp += regualizedBeta(1 - ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r) * ((candidates[i].node.r2Neighbors[j].dist / 2.0) / glob.tng_r), (DIM + 1) / 2.0, 1 / 2.0);
 			if (ovrlp > mostOvrlp) {
 				mostOvrlp = ovrlp;
 				toDel = candidates[i].node;
@@ -1952,7 +1962,8 @@ VBNN.prototype.adaptTNG = function (signal) {
         closest.lBound.min(signal);
     
         if (!glob.no_adapt)
-		    this.adaptTNGNodePositions(closest);
+            for(var i = 0; i < glob.approx_steps; i++)    
+                this.adaptTNGNodePositions(closest);
 
         if (!glob.no_delete) {
             var r2Neighbors = Array.from(closest.r2Neighbors), i;
